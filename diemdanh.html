@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Hệ Thống Điểm Danh QR Chuyên Nghiệp</title>
+    <title>Hệ Thống Điểm Danh QR</title>
     <style>
         * {
             margin: 0;
@@ -365,9 +365,18 @@
                     }
                 }
 
+                // NẾU PHÁT HIỆN TRÙNG THIẾT BỊ
                 if (scanCount >= 1) {
-                    showAlert('Bạn đã điểm danh rồi. Bạn điểm danh dùm có thể bạn sẽ bị xóa', 'error');
+                    // Hiển thị hộp thoại Xác nhận hoặc Không
+                    const confirmCheckin = confirm('Bạn đã điểm danh rồi. Bạn điểm danh dùm có thể bạn sẽ bị xóa\n\nBạn có muốn tiếp tục điểm danh hộ không?');
                     
+                    // Nếu chọn "Hủy" (Không) -> Dừng tiến trình và không lưu dữ liệu
+                    if (!confirmCheckin) {
+                        showAlert('Đã hủy lượt điểm danh trùng lặp.', 'error');
+                        return;
+                    }
+                    
+                    // Nếu chọn "OK" (Xác nhận) -> Tiến hành ghi nhận vào hệ thống
                     const nextCount = scanCount + 1;
                     const duplicateText = `[Trùng thiết bị #${shortId} - Lần ${nextCount}]`;
                     note = note ? `${note} | ${duplicateText}` : duplicateText;
@@ -379,9 +388,12 @@
                         deviceId: deviceId, isDuplicate: true, duplicateCount: nextCount
                     };
                     await database.ref('checkins/' + ownerUser + '/' + record.id).set(record);
+                    showAlert('⚠️ Đã ghi nhận điểm danh trùng lặp (Chờ Admin duyệt)!', 'success');
+                    clearCheckinForm();
                     return;
                 }
 
+                // LƯỢT QUÉT HỢP LỆ (LẦN ĐẦU)
                 const firstText = `[Thiết bị #${shortId} - Lần 1]`;
                 note = note ? `${note} | ${firstText}` : firstText;
 
@@ -394,12 +406,17 @@
 
                 await database.ref('checkins/' + ownerUser + '/' + record.id).set(record);
                 showAlert('🎉 Điểm danh thành công!', 'success');
-                document.getElementById('fullName').value = '';
-                document.getElementById('birthYear').value = '';
-                document.getElementById('class').value = '';
-                document.getElementById('union').value = '';
-                document.getElementById('note').value = '';
+                clearCheckinForm();
             } catch (error) { showAlert('❌ Lỗi hệ thống: ' + error.message, 'error'); }
+        }
+
+        // Hàm hỗ trợ tự động làm sạch form sau khi gửi thông tin thành công
+        function clearCheckinForm() {
+            if(document.getElementById('fullName')) document.getElementById('fullName').value = '';
+            if(document.getElementById('birthYear')) document.getElementById('birthYear').value = '';
+            if(document.getElementById('class')) document.getElementById('class').value = '';
+            if(document.getElementById('union')) document.getElementById('union').value = '';
+            if(document.getElementById('note')) document.getElementById('note').value = '';
         }
         
         function showAlert(msg, type) {
