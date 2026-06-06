@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Hệ Thống Điểm Danh QR Chuyên Nghiệp</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            min-height: 100vh;
+            color: #0f172a;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Header Hiện Đại & Gọn Gàng - Thu nhỏ chiều cao */
+        .header {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0 30px;
+            height: 56px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header h2 { 
+            font-size: 1.15rem; 
+            font-weight: 700; 
+            color: #1e3a8a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .user-info { 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+        }
+        .user-info span:first-child {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #334155;
+        }
+        .logout-btn { 
+            background: #fff; 
+            padding: 4px 10px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #ef4444;
+            border: 1px solid #fee2e2;
+        }
+        .logout-btn:hover { 
+            background: #fef2f2; 
+        }
+
+        /* Layout Grid Thu nhỏ khoảng cách để vừa vặn trang */
+        .container { 
+            max-width: 1350px; 
+            margin: 20px auto; 
+            padding: 0 30px; 
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+
+        /* Card Thiết Kế Tối Giản - Giảm padding */
+        .card { 
+            background: #ffffff; 
+            border-radius: 12px; 
+            padding: 18px; 
+            margin-bottom: 16px; 
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+        }
+        .card h3 { 
+            font-size: 0.9rem; 
+            margin-bottom: 14px; 
+            color: #1e293b; 
+            font-weight: 700; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Khu Vực QR Đẹp Mắt */
+        .qr-box { 
+            text-align: center; 
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 10px;
+            border: 1px dashed #cbd5e1;
+        }
+        #qrcode { 
+            display: inline-block; 
+            padding: 12px; 
+            background: white; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            margin-bottom: 12px;
+        }
+        
+        .form-group { margin-bottom: 12px; text-align: left; }
+        .form-group label { 
+            font-weight: 600; 
+            color: #475569; 
+            font-size: 0.8rem; 
+            margin-bottom: 4px; 
+            display: block;
+        }
+        .form-group input, .form-group textarea { 
+            width: 100%; 
+            padding: 8px 12px; 
+            border: 1px solid #cbd5e1; 
+            border-radius: 6px; 
+            font-size: 0.85rem; 
+            transition: all 0.2s;
+            background: #fff;
+            color: #0f172a;
+        }
+        .form-group input:focus, .form-group textarea:focus { 
+            outline: none; 
+            border-color: #2563eb; 
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+
+        /* Hệ Thống Nút Thu nhỏ kích thước */
+        .btn-primary, .btn-secondary, .btn-danger, .btn-outline { 
+            border: none; 
+            cursor: pointer; 
+            font-weight: 500; 
+            transition: all 0.2s; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 6px; 
+            justify-content: center;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            padding: 8px 14px;
+        }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-secondary { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-danger { background: #fee2e2; color: #dc2626; padding: 4px 10px; font-size: 0.75rem; }
+        .btn-danger:hover { background: #fca5a5; }
+        .btn-outline { background: transparent; border: 1px solid #cbd5e1; color: #475569; padding: 4px 10px; font-size: 0.75rem; }
+        .btn-outline:hover { background: #f8fafc; border-color: #94a3b8; }
+
+        /* Icon tải lại (2 mũi tên xoay tròn) kế bên Tiêu đề */
+        .btn-refresh {
+            background: transparent;
+            border: none;
+            color: #64748b;
+            padding: 2px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            border-radius: 4px;
+            margin-left: 2px;
+        }
+        .btn-refresh:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+        .btn-refresh svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+        .btn-refresh.spinning svg {
+            animation: spinAnimation 0.8s linear infinite;
+        }
+        @keyframes spinAnimation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Stats Đồng Bộ */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .stat-card { background: #f8fafc; border-radius: 10px; padding: 12px; text-align: left; border: 1px solid #e2e8f0; }
+        .stat-card h4 { font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase; }
+        .stat-card .number { font-size: 1.6rem; font-weight: 700; color: #1e3a8a; margin-top: 2px; }
+
+        /* Khối Nội Dung QR Cuộn Mượt */
+        .qr-stats-container { max-height: 260px; overflow-y: auto; padding-right: 4px; }
+        .qr-stat-card { background: #fff; border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e2e8f0; margin-bottom: 8px; }
+        .qr-stat-title { font-weight: 600; color: #334155; font-size: 0.8rem; word-break: break-word; }
+        .qr-stat-count { font-size: 1rem; font-weight: 700; color: #2563eb; margin-left: 10px; }
+
+        /* Bộ Lọc & Bảng Dữ Liệu - Giảm size chữ và padding */
+        .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+        .search-box { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; width: 240px; transition: 0.2s; }
+        .search-box:focus { outline: none; border-color: #2563eb; }
+        
+        .table-wrapper { overflow-x: auto; border-radius: 10px; border: 1px solid #e2e8f0; background: white; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 850px; text-align: left; }
+        .data-table th { background: #f8fafc; color: #475569; padding: 10px 12px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; }
+        .data-table td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; color: #334155; }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:hover { background: #f8fafc; }
+        
+        .delete-icon { color: #94a3b8; cursor: pointer; transition: 0.2s; font-size: 14px; }
+        .delete-icon:hover { color: #ef4444; }
+
+        /* Nhãn Trạng Thái Trực Quan */
+        .badge { background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; display: inline-block; }
+        .badge-danger { background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; display: inline-block; }
+        .alert { padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 0.8rem; font-weight: 500; }
+        .alert-success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .no-data { text-align: center; padding: 30px 10px; color: #64748b; font-size: 0.85rem; }
+        .flex-row { display: flex; align-items: center; gap: 6px; }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid { grid-template-columns: 1fr; gap: 0; }
+            .container { padding: 0 15px; margin: 15px auto; }
+            .header { padding: 0 15px; }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h2>🎯 Hệ Thống Điểm Danh QR</h2>
+        <div class="user-info">
+            <span id="userDisplay"></span>
+            <span class="logout-btn" onclick="logout()">Đăng xuất</span>
+        </div>
+    </div>
+    
+    <div class="container" id="mainContainer">
+        <div class="no-data">Đang tải cấu trúc dữ liệu...</div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrOrDdI-K-Ul2Z9UtfHATWlOALb6oRBZc",
+            authDomain: "diem-danh-c20d1.firebaseapp.com",
+            databaseURL: "https://diem-danh-c20d1-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "diem-danh-c20d1",
+            storageBucket: "diem-danh-c20d1.firebasestorage.app",
+            messagingSenderId: "417351044838",
+            appId: "1:417351044838:web:2f4c643e5774078a277527"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let currentUser = null;
+
+        // Hàm tạo mã định danh thiết bị ẩn (Device Fingerprint) đơn giản tránh trùng lặp máy quét
+        function getDeviceFingerprint() {
+            const navigatorInfo = window.navigator.userAgent + window.navigator.language + window.screen.colorDepth + window.screen.width + window.screen.height;
+            let hash = 0;
+            for (let i = 0; i < navigatorInfo.length; i++) {
+                const char = navigatorInfo.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return "DEV-" + Math.abs(hash);
+        }
+
+        function checkAuth() {
+            const userStr = localStorage.getItem('currentUser');
+            if (!userStr) { window.location.href = 'index.html'; return false; }
+            currentUser = JSON.parse(userStr);
+            document.getElementById('userDisplay').innerHTML = `👤 ${escapeHtml(currentUser.username)}`;
+            return true;
+        }
+        function logout() { localStorage.removeItem('currentUser'); window.location.href = 'index.html'; }
+
+        async function render() {
+            const container = document.getElementById('mainContainer');
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('mode') === 'checkin') {
+                document.querySelector('.header').style.display = 'none';
+                await renderCheckinForm(container);
+                return;
+            }
+            if (!checkAuth()) return;
+            await renderAdminView(container);
+        }
+
+        // ========== FORM ĐIỂM DANH CLIENT ==========
+        async function renderCheckinForm(container) {
+            const ownerUser = new URLSearchParams(window.location.search).get('user') || 'public';
+            let qrContent = "";
+            try { const snap = await database.ref('qrContents/' + ownerUser).once('value'); qrContent = snap.val() || ""; } catch(e) {}
+            const todayDate = new Date().toLocaleDateString('vi-VN');
+            container.innerHTML = `
+                <div class="card" style="max-width:460px; margin:30px auto; border-top: 4px solid #2563eb;">
+                    <h3 style="text-align:center; display:block; margin-bottom:6px;">📋 XÁC NHẬN ĐIỂM DANH</h3>
+                    <p style="text-align:center; color:#64748b; font-size:0.85rem; margin-bottom:18px;">Ngày: ${todayDate}</p>
+                    ${qrContent ? `<div class="alert alert-success" style="text-align:center;">📌 ${escapeHtml(qrContent)}</div>` : ''}
+                    <div id="alertMessage"></div>
+                    <div class="form-group"><label>Họ và tên *</label><input type="text" id="fullName" placeholder="Ví dụ: Nguyễn Văn A"></div>
+                    <div class="form-group"><label>Năm sinh *</label><input type="number" id="birthYear" placeholder="Ví dụ: 2005"></div>
+                    <div class="form-group"><label>Lớp *</label><input type="text" id="class" placeholder="Ví dụ: 12A1"></div>
+                    <div class="form-group"><label>Chi đoàn *</label><input type="text" id="union" placeholder="Ví dụ: Đoàn trường"></div>
+                    <div class="form-group"><label>Ghi chú (nếu có)</label><textarea id="note" rows="2" placeholder="Nhập ghi chú..."></textarea></div>
+                    <button class="btn-primary" id="submitBtn" style="width:100%; padding:10px; font-size:0.95rem; font-weight:600; margin-top:6px;">Xác nhận hoàn tất</button>
+                </div>
+            `;
+            document.getElementById('submitBtn').onclick = () => submitCheckin(todayDate, qrContent, ownerUser);
+        }
+
+        async function submitCheckin(date, qrContent, ownerUser) {
+            const fullName = document.getElementById('fullName').value.trim();
+            const birthYear = document.getElementById('birthYear').value;
+            const className = document.getElementById('class').value.trim();
+            const union = document.getElementById('union').value.trim();
+            const note = document.getElementById('note').value.trim();
+            
+            if (!fullName || !birthYear || !className || !union) {
+                showAlert('Vui lòng điền đầy đủ các thông tin bắt buộc (*)', 'error');
+                return;
+            }
+
+            const deviceId = getDeviceFingerprint();
+
+            try {
+                // Kiểm tra xem thiết bị này đã từng quét điểm danh trong sự kiện này chưa
+                const snapshot = await database.ref('checkins/' + ownerUser).once('value');
+                const data = snapshot.val() || {};
+                
+                let isDuplicate = false;
+                for (const item of Object.values(data)) {
+                    if (item.deviceId === deviceId && item.date === date && (item.qrContent || "") === (qrContent || "")) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+
+                if (isDuplicate) {
+                    showAlert('Bạn đã điểm danh rồi. Bạn điểm danh dùm có thể bạn sẽ bị xóa', 'error');
+                    
+                    // Vẫn cho phép lưu bản ghi lỗi này vào database nhưng gắn cờ cảnh báo trùng lặp để admin xử lý
+                    const now = new Date();
+                    const record = {
+                        id: now.getTime().toString(), fullName, birthYear, class: className, union, note,
+                        time: now.toLocaleString('vi-VN'), timestamp: now.getTime(), date: date, qrContent: qrContent || "",
+                        deviceId: deviceId, isDuplicate: true
+                    };
+                    await database.ref('checkins/' + ownerUser + '/' + record.id).set(record);
+                    return;
+                }
+
+                const now = new Date();
+                const record = {
+                    id: now.getTime().toString(), fullName, birthYear, class: className, union, note,
+                    time: now.toLocaleString('vi-VN'), timestamp: now.getTime(), date: date, qrContent: qrContent || "",
+                    deviceId: deviceId, isDuplicate: false
+                };
+
+                await database.ref('checkins/' + ownerUser + '/' + record.id).set(record);
+                showAlert('🎉 Điểm danh thành công!', 'success');
+                document.getElementById('fullName').value = '';
+                document.getElementById('birthYear').value = '';
+                document.getElementById('class').value = '';
+                document.getElementById('union').value = '';
+                document.getElementById('note').value = '';
+            } catch (error) { showAlert('❌ Lỗi hệ thống: ' + error.message, 'error'); }
+        }
+        
+        function showAlert(msg, type) {
+            const div = document.getElementById('alertMessage');
+            if(div) { div.innerHTML = msg ? `<div class="alert alert-${type}">${msg}</div>` : ''; }
+        }
+
+        // ========== CHỨC NĂNG ADMIN TỰ ĐIỂM DANH HỘ ==========
+        async function adminSubmitCheckin() {
+            const fullName = document.getElementById('adminFullName').value.trim();
+            const birthYear = document.getElementById('adminBirthYear').value;
+            const className = document.getElementById('adminClass').value.trim();
+            const union = document.getElementById('adminUnion').value.trim();
+            const note = document.getElementById('adminNote').value.trim();
+            
+            if (!fullName || !birthYear || !className || !union) {
+                alert('Vui lòng điền đầy đủ các thông tin bắt buộc (*)');
+                return;
+            }
+
+            let savedQrContent = "";
+            try { const qrSnap = await database.ref('qrContents/' + currentUser.username).once('value'); savedQrContent = qrSnap.val() || ""; } catch(e) {}
+            const todayDate = new Date().toLocaleDateString('vi-VN');
+            const now = new Date();
+            
+            const record = {
+                id: now.getTime().toString(), fullName, birthYear, class: className, union,
+                note: note ? note + " (Admin nhập hộ)" : "Admin nhập hộ",
+                time: now.toLocaleString('vi-VN'), timestamp: now.getTime(), date: todayDate, qrContent: savedQrContent,
+                deviceId: "ADMIN-MANUAL", isDuplicate: false
+            };
+
+            try {
+                await database.ref('checkins/' + currentUser.username + '/' + record.id).set(record);
+                alert('🎉 Admin đã điểm danh hộ thành công!');
+                document.getElementById('adminFullName').value = '';
+                document.getElementById('adminBirthYear').value = '';
+                document.getElementById('adminClass').value = '';
+                document.getElementById('adminUnion').value = '';
+                document.getElementById('adminNote').value = '';
+                await refreshDataSmooth();
+            } catch (error) { alert('❌ Lỗi hệ thống: ' + error.message); }
+        }
+
+        // ========== CHỨC NĂNG ADMIN BIÊN TẬP ==========
+        async function deleteCheckin(ownerUser, id) {
+            if (!confirm('Bạn có chắc chắn muốn xóa bản ghi điểm danh này?')) return;
+            try {
+                await database.ref('checkins/' + ownerUser + '/' + id).remove();
+                await refreshDataSmooth();
+            } catch (error) { alert('Lỗi: ' + error.message); }
+        }
+
+        async function deleteByQrContent(ownerUser, qrContent) {
+            const displayContent = qrContent || "(Không có nội dung)";
+            if (!confirm(`⚠️ Cảnh báo: Xóa TOÀN BỘ lượt điểm danh thuộc nội dung: "${displayContent}"?\nHành động này không thể khôi phục.`)) return;
+            try {
+                const snapshot = await database.ref('checkins/' + ownerUser).once('value');
+                const data = snapshot.val() || {};
+                const promises = [];
+                for (const [id, item] of Object.entries(data)) {
+                    if ((item.qrContent || "") === (qrContent || "")) {
+                        promises.push(database.ref('checkins/' + ownerUser + '/' + id).remove());
+                    }
+                }
+                await Promise.all(promises);
+                await refreshDataSmooth();
+            } catch (error) { alert('Lỗi: ' + error.message); }
+        }
+
+        function exportToExcel(data, username) {
+            if (!data.length) { alert("Không có dữ liệu để xuất file!"); return; }
+            const exportData = data.map(item => ({
+                "Ngày": item.date, "Họ tên": item.fullName, "Năm sinh": item.birthYear,
+                "Lớp": item.class, "Chi đoàn": item.union, "Nội dung sự kiện": item.qrContent, "Ghi chú": item.note, "Thời gian quét": item.time, "Trạng thái thiết bị": item.isDuplicate ? "Trùng lặp thiết bị (Cảnh báo)" : "Hợp lệ"
+            }));
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Danh Sách");
+            XLSX.writeFile(wb, `DiemDanh_${username}_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
+        }
+
+        async function downloadQRCode() {
+            const el = document.getElementById('qrcode');
+            if (!el) return;
+            try {
+                const canvas = await html2canvas(el, { scale: 3, backgroundColor: '#ffffff' });
+                const link = document.createElement('a');
+                link.download = `QR_Code_${currentUser.username}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (e) { alert('Lỗi tải xuống ảnh QR'); }
+        }
+
+        async function saveQrContent() {
+            const newContent = document.getElementById('qrContentInput').value.trim();
+            try {
+                await database.ref('qrContents/' + currentUser.username).set(newContent);
+                await refreshDataSmooth();
+            } catch (error) { alert('Lỗi: ' + error.message); }
+        }
+
+        // Hàm xử lý tải lại dữ liệu ngầm (không reload trang gây gián đoạn)
+        async function refreshDataSmooth() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) refreshBtn.classList.add('spinning');
+
+            try {
+                // Tải trạng thái QR Content hiện hành
+                let savedQrContent = "";
+                const qrSnap = await database.ref('qrContents/' + currentUser.username).once('value');
+                savedQrContent = qrSnap.val() || "";
+                
+                const statusAlertArea = document.getElementById('statusAlertArea');
+                if (statusAlertArea) {
+                    statusAlertArea.innerHTML = savedQrContent ? `<div class="alert alert-success" style="margin-top:10px; padding:6px 12px; font-size:0.8rem;">📍 Nội dung hiện tại: ${escapeHtml(savedQrContent)}</div>` : '';
+                }
+
+                // Tải dữ liệu điểm danh
+                const snapshot = await database.ref('checkins/' + currentUser.username).once('value');
+                const data = snapshot.val() || {};
+                let checkins = Object.values(data).map(item => {
+                    if (!item.date && item.timestamp) {
+                        const d = new Date(item.timestamp);
+                        item.date = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+                    }
+                    return item;
+                }).sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+
+                const today = new Date().toLocaleDateString('vi-VN');
+                const todayCount = checkins.filter(c => c.date === today).length;
+
+                // Đồng bộ chỉ số thống kê dạng text nhanh
+                const totalNum = document.getElementById('totalNum');
+                const todayNum = document.getElementById('todayNum');
+                if (totalNum) totalNum.innerText = checkins.length;
+                if (todayNum) todayNum.innerText = todayCount;
+
+                // Đồng bộ khối thống kê theo danh mục QR
+                const qrStats = new Map();
+                checkins.forEach(item => {
+                    const content = item.qrContent || "(Không có nội dung)";
+                    qrStats.set(content, (qrStats.get(content) || 0) + 1);
+                });
+
+                const qrStatsArea = document.getElementById('qrStatsArea');
+                if (qrStatsArea) {
+                    let qrStatsHtml = '<div class="qr-stats-container">';
+                    for (let [content, count] of qrStats) {
+                        qrStatsHtml += `
+                            <div class="qr-stat-card">
+                                <div>
+                                    <div class="qr-stat-title">📌 ${escapeHtml(content.length > 35 ? content.substring(0,35)+'...' : content)}</div>
+                                    <span class="badge" style="margin-top:4px; background:#f1f5f9; color:#475569;">${count} lượt</span>
+                                </div>
+                                <button class="btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick='deleteByQrContent("${currentUser.username}","${escapeHtml(content).replace(/'/g, "\\'")}")'>Xóa</button>
+                            </div>
+                        `;
+                    }
+                    qrStatsHtml += '</div>';
+                    if (qrStats.size === 0) qrStatsHtml = '<div class="no-data">Chưa phân loại theo nội dung</div>';
+                    qrStatsArea.innerHTML = qrStatsHtml;
+                }
+
+                // Đồng bộ cấu trúc bảng và bộ lọc tìm kiếm
+                const searchInput = document.getElementById('searchInput');
+                const currentSearchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+
+                const renderTable = (list) => {
+                    const tbody = document.getElementById('tableBody');
+                    if (!tbody) return;
+                    if (list.length === 0) { tbody.innerHTML = '<tr><td colspan="9" class="no-data">📭 Không tìm thấy dữ liệu điểm danh tương thích</td></tr>'; return; }
+                    tbody.innerHTML = list.map(item => `
+                        <tr style="${item.isDuplicate ? 'background-color: #fff1f2;' : ''}">
+                            <td><span class="badge">${escapeHtml(item.date || '--')}</span></td>
+                            <td>
+                                <strong>${escapeHtml(item.fullName || '')}</strong>
+                                ${item.isDuplicate ? '<br><span class="badge-danger">⚠️ [Trùng thiết bị]</span>' : ''}
+                            </td>
+                            <td>${escapeHtml(item.birthYear || '')}</td>
+                            <td>${escapeHtml(item.class || '')}</td>
+                            <td>${escapeHtml(item.union || '')}</td>
+                            <td style="max-width:150px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(item.qrContent || '')}">${escapeHtml(item.qrContent || '—')}</td>
+                            <td style="max-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(item.note || '')}">${escapeHtml(item.note || '—')}</td>
+                            <td style="color:#64748b; font-size:0.75rem;">${escapeHtml(item.time ? item.time.split(' ')[1] || item.time : '')}</td>
+                            <td><span class="delete-icon" onclick="deleteCheckin('${currentUser.username}','${item.id}')">🗑️</span></td>
+                        </tr>
+                    `).join('');
+                };
+
+                const filtered = checkins.filter(c => 
+                    currentSearchTerm === '' || (c.fullName && c.fullName.toLowerCase().includes(currentSearchTerm)) ||
+                    (c.class && c.class.toLowerCase().includes(currentSearchTerm)) || (c.union && c.union.toLowerCase().includes(currentSearchTerm)) ||
+                    (c.qrContent && c.qrContent.toLowerCase().includes(currentSearchTerm)) || (c.date && c.date.includes(currentSearchTerm))
+                );
+                renderTable(filtered);
+
+                const exportBtn = document.getElementById('exportBtn');
+                if (exportBtn) exportBtn.onclick = () => exportToExcel(filtered, currentUser.username);
+
+                if (searchInput) {
+                    searchInput.oninput = (e) => {
+                        const term = e.target.value.toLowerCase();
+                        const realtimeFiltered = checkins.filter(c => 
+                            term === '' || (c.fullName && c.fullName.toLowerCase().includes(term)) ||
+                            (c.class && c.class.toLowerCase().includes(term)) || (c.union && c.union.toLowerCase().includes(term)) ||
+                            (c.qrContent && c.qrContent.toLowerCase().includes(term)) || (c.date && c.date.includes(term))
+                        );
+                        renderTable(realtimeFiltered);
+                        if (exportBtn) exportBtn.onclick = () => exportToExcel(realtimeFiltered, currentUser.username);
+                    };
+                }
+
+            } catch (error) {
+                console.error(error);
+                alert('Có lỗi xảy ra khi đồng bộ dữ liệu: ' + error.message);
+            } finally {
+                if (refreshBtn) {
+                    setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
+                }
+            }
+        }
+
+        // ========== GIAO DIỆN ADMIN CHUYÊN NGHIỆP ==========
+        async function renderAdminView(container) {
+            try {
+                let savedQrContent = "";
+                try { const snap = await database.ref('qrContents/' + currentUser.username).once('value'); savedQrContent = snap.val() || ""; } catch(e) {}
+                const checkinUrl = window.location.origin + window.location.pathname + '?mode=checkin&user=' + encodeURIComponent(currentUser.username);
+                
+                container.innerHTML = `
+                    <div class="dashboard-grid">
+                        <div class="sidebar-area">
+                            <div class="card">
+                                <h3>📱 Cấu hình QR quét</h3>
+                                <div class="qr-box">
+                                    <div id="qrcode"></div>
+                                    <div class="flex-row" style="justify-content:center; margin-bottom:12px;">
+                                        <button class="btn-secondary" id="copyBtn" style="font-size:0.75rem; padding:6px 10px;">🔗 Copy Link</button>
+                                        <button class="btn-primary" id="downloadBtn" style="font-size:0.75rem; padding:6px 10px;">⬇️ Tải Ảnh</button>
+                                    </div>
+                                    <div class="form-group" style="border-top: 1px solid #e2e8f0; padding-top:12px; margin-bottom: 0;">
+                                        <label>Nội dung đính kèm lượt quét</label>
+                                        <input type="text" id="qrContentInput" placeholder="Ví dụ: Đại hội chi đoàn..." value="${escapeHtml(savedQrContent)}">
+                                        <button class="btn-secondary" onclick="saveQrContent()" style="width:100%; margin-top:6px; padding:6px; background:#1e293b; color:#fff;">Cập nhật nội dung</button>
+                                    </div>
+                                    <div id="statusAlertArea">
+                                        ${savedQrContent ? `<div class="alert alert-success" style="margin-top:10px; padding:6px 12px; font-size:0.8rem;">📍 Nội dung hiện tại: ${escapeHtml(savedQrContent)}</div>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- KHU VỰC ADMIN TỰ ĐIỂM DANH HỘ -->
+                            <div class="card" style="border-top: 3px solid #16a34a;">
+                                <h3>✍️ Admin Điểm Danh Hộ</h3>
+                                <p style="font-size: 0.75rem; color: #64748b; margin-bottom: 10px;">Dành cho người không có điện thoại để quét mã QR (Gắn vào nội dung hiện hành).</p>
+                                <div class="form-group"><label>Họ và tên *</label><input type="text" id="adminFullName" placeholder="Nguyễn Văn A"></div>
+                                <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                    <div><label>Năm sinh *</label><input type="number" id="adminBirthYear" placeholder="2005"></div>
+                                    <div><label>Lớp *</label><input type="text" id="adminClass" placeholder="12A1"></div>
+                                </div>
+                                <div class="form-group"><label>Chi đoàn *</label><input type="text" id="adminUnion" placeholder="Đoàn trường"></div>
+                                <div class="form-group"><label>Ghi chú</label><input type="text" id="adminNote" placeholder="Lý do nhập hộ..."></div>
+                                <button class="btn-primary" onclick="adminSubmitCheckin()" style="width:100%; background:#16a34a; font-weight:600; padding:8px;">Ghi nhận hệ thống</button>
+                            </div>
+                            
+                            <div class="card">
+                                <h3>📊 Thống kê nhanh</h3>
+                                <div class="stats-grid">
+                                    <div class="stat-card"><h4>Tổng số</h4><div class="number" id="totalNum">0</div></div>
+                                    <div class="stat-card"><h4>Hôm nay</h4><div class="number" id="todayNum">0</div></div>
+                                </div>
+                            </div>
+                            
+                            <div class="card">
+                                <h3>🏷️ Sự kiện đã quét</h3>
+                                <div id="qrStatsArea"><div class="no-data">Đang nạp dữ liệu...</div></div>
+                            </div>
+                        </div>
+                        
+                        <div class="main-content-area">
+                            <div class="card" style="margin-bottom:0;">
+                                <div class="flex-between">
+                                    <h3 style="display: flex; align-items: center; gap: 4px;">
+                                        📋 Nhật ký điểm danh chi tiết
+                                        <button id="refreshBtn" class="btn-refresh" onclick="refreshDataSmooth()" title="Làm mới danh sách">
+                                            <svg viewBox="0 0 24 24">
+                                                <path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6a5.87 5.87 0 0 1-2.8-.7l-1.46 1.46A7.93 7.93 0 0 0 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.94.25 2.8.7l1.46-1.46A7.93 7.93 0 0 0 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"/>
+                                            </svg>
+                                        </button>
+                                    </h3>
+                                    <div class="flex-row">
+                                        <input type="text" id="searchInput" class="search-box" placeholder="Tìm nhanh tên, lớp...">
+                                        <button class="btn-primary" id="exportBtn" style="background:#16a34a;">Xuất Excel</button>
+                                    </div>
+                                </div>
+                                <div class="table-wrapper">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Ngày</th>
+                                                <th>Họ và Tên</th>
+                                                <th>Năm sinh</th>
+                                                <th>Lớp</th>
+                                                <th>Chi đoàn</th>
+                                                <th>Sự kiện</th>
+                                                <th>Ghi chú</th>
+                                                <th>Thời gian</th>
+                                                <th style="width:36px"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tableBody">
+                                            <tr><td colspan="9" class="no-data">Đang tải lịch sử điểm danh...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                new QRCode(document.getElementById("qrcode"), { text: checkinUrl, width: 150, height: 150, colorDark: "#0f172a", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+                document.getElementById('copyBtn').onclick = () => { navigator.clipboard.writeText(checkinUrl); alert('Đã sao chép liên kết điểm danh thành công!'); };
+                document.getElementById('downloadBtn').onclick = downloadQRCode;
+                
+                // Kích hoạt đồng bộ hóa dữ liệu ngầm mượt mà lần đầu tiên
+                await refreshDataSmooth();
+                
+            } catch (error) {
+                console.error(error);
+                container.innerHTML = `<div class="card" style="color:#b91c1c;">⚠️ Lỗi nạp thông tin từ hệ thống: ${error.message}</div>`;
+            }
+        }
+        
+        function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+        
+        window.deleteCheckin = deleteCheckin;
+        window.deleteByQrContent = deleteByQrContent;
+        window.saveQrContent = saveQrContent;
+        window.downloadQRCode = downloadQRCode;
+        window.refreshDataSmooth = refreshDataSmooth;
+        window.adminSubmitCheckin = adminSubmitCheckin;
+        
+        render();
+    </script>
+</body>
+</html>
