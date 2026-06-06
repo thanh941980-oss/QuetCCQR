@@ -164,7 +164,7 @@
         .btn-outline { background: transparent; border: 1px solid #cbd5e1; color: #475569; padding: 4px 10px; font-size: 0.75rem; }
         .btn-outline:hover { background: #f8fafc; border-color: #94a3b8; }
 
-        /* Icon tải lại (2 mũi tên xoay tròn) kế bên Tiêu đề */
+        /* Icon tải lại */
         .btn-refresh {
             background: transparent;
             border: none;
@@ -207,7 +207,7 @@
         .qr-stat-title { font-weight: 600; color: #334155; font-size: 0.8rem; word-break: break-word; }
         .qr-stat-count { font-size: 1rem; font-weight: 700; color: #2563eb; margin-left: 10px; }
 
-        /* Bộ Lọc & Bảng Dữ Liệu - Giảm size chữ và padding */
+        /* Bộ Lọc & Bảng Dữ Liệu */
         .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
         .search-box { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; width: 240px; transition: 0.2s; }
         .search-box:focus { outline: none; border-color: #2563eb; }
@@ -272,7 +272,7 @@
 
         let currentUser = null;
 
-        // Hàm tạo mã định danh thiết bị ẩn (Device Fingerprint) đơn giản tránh trùng lặp máy quét
+        // Hàm tạo định danh thiết bị ẩn
         function getDeviceFingerprint() {
             const navigatorInfo = window.navigator.userAgent + window.navigator.language + window.screen.colorDepth + window.screen.width + window.screen.height;
             let hash = 0;
@@ -341,6 +341,7 @@
             }
 
             const deviceId = getDeviceFingerprint();
+            const shortId = deviceId.slice(-4);
 
             try {
                 // Kiểm tra xem thiết bị này đã từng quét điểm danh trong sự kiện này chưa
@@ -354,14 +355,14 @@
                     }
                 }
 
+                // NẾU LÀ TỪ LẦN THỨ 2 TRỞ ĐI -> CẢNH BÁO TRÙNG
                 if (scanCount >= 1) {
                     showAlert('Bạn đã điểm danh rồi. Bạn điểm danh dùm có thể bạn sẽ bị xóa', 'error');
                     
                     const nextCount = scanCount + 1;
-                    const duplicateText = `[Trùng thiết bị - Lần ${nextCount}]`;
+                    const duplicateText = `[Trùng thiết bị #${shortId} - Lần ${nextCount}]`;
                     note = note ? `${note} | ${duplicateText}` : duplicateText;
 
-                    // Vẫn cho phép lưu bản ghi lỗi này vào database nhưng gắn cờ cảnh báo trùng lặp và lưu số lần trùng để admin xử lý
                     const now = new Date();
                     const record = {
                         id: now.getTime().toString(), fullName, birthYear, class: className, union, note,
@@ -371,6 +372,10 @@
                     await database.ref('checkins/' + ownerUser + '/' + record.id).set(record);
                     return;
                 }
+
+                // NẾU LÀ LẦN 1 -> LƯU HỢP LỆ VÀ ĐÁNH DẤU LẦN 1 LUÔN
+                const firstText = `[Thiết bị #${shortId} - Lần 1]`;
+                note = note ? `${note} | ${firstText}` : firstText;
 
                 const now = new Date();
                 const record = {
@@ -461,7 +466,8 @@
             if (!data.length) { alert("Không có dữ liệu để xuất file!"); return; }
             const exportData = data.map(item => ({
                 "Ngày": item.date, "Họ tên": item.fullName, "Năm sinh": item.birthYear,
-                "Lớp": item.class, "Chi đoàn": item.union, "Nội dung sự kiện": item.qrContent, "Ghi chú": item.note, "Thời gian quét": item.time, "Trạng thái thiết bị": item.isDuplicate ? `Trùng lặp (Mã máy #${item.deviceId ? item.deviceId.slice(-4) : '????'} - Lần ${item.duplicateCount || 2})` : "Hợp lệ"
+                "Lớp": item.class, "Chi đoàn": item.union, "Nội dung sự kiện": item.qrContent, "Ghi chú": item.note, "Thời gian quét": item.time, 
+                "Trạng thái thiết bị": item.isDuplicate ? `Trùng lặp (Mã máy #${item.deviceId ? item.deviceId.slice(-4) : '????'} - Lần ${item.duplicateCount || 2})` : `Hợp lệ (Mã máy #${item.deviceId ? item.deviceId.slice(-4) : '????'} - Lần 1)`
             }));
             const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
@@ -489,13 +495,12 @@
             } catch (error) { alert('Lỗi: ' + error.message); }
         }
 
-        // Hàm xử lý tải lại dữ liệu ngầm (không reload trang gây gián đoạn)
+        // Hàm xử lý tải lại dữ liệu ngầm mượt mà
         async function refreshDataSmooth() {
             const refreshBtn = document.getElementById('refreshBtn');
             if (refreshBtn) refreshBtn.classList.add('spinning');
 
             try {
-                // Tải trạng thái QR Content hiện hành
                 let savedQrContent = "";
                 const qrSnap = await database.ref('qrContents/' + currentUser.username).once('value');
                 savedQrContent = qrSnap.val() || "";
@@ -505,7 +510,6 @@
                     statusAlertArea.innerHTML = savedQrContent ? `<div class="alert alert-success" style="margin-top:10px; padding:6px 12px; font-size:0.8rem;">📍 Nội dung hiện tại: ${escapeHtml(savedQrContent)}</div>` : '';
                 }
 
-                // Tải dữ liệu điểm danh
                 const snapshot = await database.ref('checkins/' + currentUser.username).once('value');
                 const data = snapshot.val() || {};
                 let checkins = Object.values(data).map(item => {
@@ -519,13 +523,11 @@
                 const today = new Date().toLocaleDateString('vi-VN');
                 const todayCount = checkins.filter(c => c.date === today).length;
 
-                // Đồng bộ chỉ số thống kê dạng text nhanh
                 const totalNum = document.getElementById('totalNum');
                 const todayNum = document.getElementById('todayNum');
                 if (totalNum) totalNum.innerText = checkins.length;
                 if (todayNum) todayNum.innerText = todayCount;
 
-                // Đồng bộ khối thống kê theo danh mục QR
                 const qrStats = new Map();
                 checkins.forEach(item => {
                     const content = item.qrContent || "(Không có nội dung)";
@@ -551,7 +553,6 @@
                     qrStatsArea.innerHTML = qrStatsHtml;
                 }
 
-                // Đồng bộ cấu trúc bảng và bộ lọc tìm kiếm
                 const searchInput = document.getElementById('searchInput');
                 const currentSearchTerm = searchInput ? searchInput.value.toLowerCase() : '';
 
@@ -560,14 +561,13 @@
                     if (!tbody) return;
                     if (list.length === 0) { tbody.innerHTML = '<tr><td colspan="9" class="no-data">📭 Không tìm thấy dữ liệu điểm danh tương thích</td></tr>'; return; }
                     tbody.innerHTML = list.map(item => {
-                        // Trích xuất mã 4 số cuối thiết bị
                         const shortId = item.deviceId && item.deviceId !== 'ADMIN-MANUAL' ? item.deviceId.slice(-4) : '';
                         return `
                         <tr style="${item.isDuplicate ? 'background-color: #fff1f2;' : ''}">
                             <td><span class="badge">${escapeHtml(item.date || '--')}</span></td>
                             <td>
                                 <strong>${escapeHtml(item.fullName || '')}</strong>
-                                ${item.isDuplicate ? `<br><span class="badge-danger" style="font-size:0.7rem; padding:1px 4px; margin-top:2px;">⚠️ [Máy #${shortId} trùng lần ${item.duplicateCount || 2}]</span>` : ''}
+                                ${item.isDuplicate ? `<br><span class="badge-danger" style="font-size:0.7rem; padding:1px 4px; margin-top:2px;">⚠️ [Máy #${shortId} trùng lần ${item.duplicateCount || 2}]</span>` : `<br><span class="badge" style="font-size:0.7rem; padding:1px 4px; margin-top:2px; background:#f0fdf4; color:#16a34a;">✓ [Máy #${shortId} - Lần 1]</span>`}
                             </td>
                             <td>${escapeHtml(item.birthYear || '')}</td>
                             <td>${escapeHtml(item.class || '')}</td>
@@ -609,7 +609,7 @@
                 alert('Có lỗi xảy ra khi đồng bộ dữ liệu: ' + error.message);
             } finally {
                 if (refreshBtn) {
-                    setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
+                    setTimeout(() => refreshBtn.remove('spinning'), 500);
                 }
             }
         }
@@ -643,7 +643,6 @@
                                 </div>
                             </div>
 
-                            <!-- KHU VỰC ADMIN TỰ ĐIỂM DANH HỘ -->
                             <div class="card" style="border-top: 3px solid #16a34a;">
                                 <h3>✍️ Admin Điểm Danh Hộ</h3>
                                 <p style="font-size: 0.75rem; color: #64748b; margin-bottom: 10px;">Dành cho người không có điện thoại để quét mã QR (Gắn vào nội dung hiện hành).</p>
@@ -716,7 +715,6 @@
                 document.getElementById('copyBtn').onclick = () => { navigator.clipboard.writeText(checkinUrl); alert('Đã sao chép liên kết điểm danh thành công!'); };
                 document.getElementById('downloadBtn').onclick = downloadQRCode;
                 
-                // Kích hoạt đồng bộ hóa dữ liệu ngầm mượt mà lần đầu tiên
                 await refreshDataSmooth();
                 
             } catch (error) {
