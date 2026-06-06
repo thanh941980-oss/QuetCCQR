@@ -125,7 +125,7 @@
             margin-bottom: 4px; 
             display: block;
         }
-        .form-group input, .form-group textarea { 
+        .form-group input, .form-group textarea, .form-group select { 
             width: 100%; 
             padding: 8px 12px; 
             border: 1px solid #cbd5e1; 
@@ -135,14 +135,14 @@
             background: #fff;
             color: #0f172a;
         }
-        .form-group input:focus, .form-group textarea:focus { 
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { 
             outline: none; 
             border-color: #2563eb; 
             box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
         }
 
         /* Hệ Thống Nút Thu nhỏ kích thước */
-        .btn-primary, .btn-secondary, .btn-danger, .btn-outline { 
+        .btn-primary, .btn-secondary, .btn-danger, .btn-outline, .btn-warning { 
             border: none; 
             cursor: pointer; 
             font-weight: 500; 
@@ -157,6 +157,8 @@
         }
         .btn-primary { background: #2563eb; color: white; }
         .btn-primary:hover { background: #1d4ed8; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-warning:hover { background: #d97706; }
         .btn-secondary { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
         .btn-secondary:hover { background: #e2e8f0; }
         .btn-danger { background: #fee2e2; color: #dc2626; padding: 4px 10px; font-size: 0.75rem; }
@@ -164,7 +166,7 @@
         .btn-outline { background: transparent; border: 1px solid #cbd5e1; color: #475569; padding: 4px 10px; font-size: 0.75rem; }
         .btn-outline:hover { background: #f8fafc; border-color: #94a3b8; }
 
-        /* Icon tải lại */
+        /* Icon tải lại (2 mũi tên xoay tròn) kế bên Tiêu đề */
         .btn-refresh {
             background: transparent;
             border: none;
@@ -207,10 +209,12 @@
         .qr-stat-title { font-weight: 600; color: #334155; font-size: 0.8rem; word-break: break-word; }
         .qr-stat-count { font-size: 1rem; font-weight: 700; color: #2563eb; margin-left: 10px; }
 
-        /* Bộ Lọc & Bảng Dữ Liệu */
+        /* Bộ Lọc & Bảng Dữ Liệu - Giảm size chữ và padding */
         .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
-        .search-box { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; width: 240px; transition: 0.2s; }
+        .search-box { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; width: 200px; transition: 0.2s; }
         .search-box:focus { outline: none; border-color: #2563eb; }
+        .filter-select { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; width: 220px; background: #fff; }
+        .filter-select:focus { outline: none; border-color: #2563eb; }
         
         .table-wrapper { overflow-x: auto; border-radius: 10px; border: 1px solid #e2e8f0; background: white; }
         .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 850px; text-align: left; }
@@ -223,13 +227,19 @@
         .delete-icon:hover { color: #ef4444; }
 
         /* Nhãn Trạng Thái Trực Quan */
-        .badge { background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; display: inline-block; }
+        .badge { background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 0.7 rrem; font-weight: 600; display: inline-block; }
         .badge-danger { background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; display: inline-block; }
         .alert { padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 0.8rem; font-weight: 500; }
         .alert-success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
         .alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
         .no-data { text-align: center; padding: 30px 10px; color: #64748b; font-size: 0.85rem; }
         .flex-row { display: flex; align-items: center; gap: 6px; }
+
+        @media (max-width: 1200px) {
+            .flex-between { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .flex-between .flex-row { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+            .search-box, .filter-select { width: 100%; max-width: 250px; }
+        }
 
         @media (max-width: 1024px) {
             .dashboard-grid { grid-template-columns: 1fr; gap: 0; }
@@ -272,7 +282,7 @@
 
         let currentUser = null;
 
-        // Hàm tạo định danh thiết bị ẩn
+        // Hàm tạo mã định danh thiết bị ẩn (Device Fingerprint) đơn giản tránh trùng lặp máy quét
         function getDeviceFingerprint() {
             const navigatorInfo = window.navigator.userAgent + window.navigator.language + window.screen.colorDepth + window.screen.width + window.screen.height;
             let hash = 0;
@@ -355,7 +365,6 @@
                     }
                 }
 
-                // NẾU LÀ TỪ LẦN THỨ 2 TRỞ ĐI -> CẢNH BÁO TRÙNG
                 if (scanCount >= 1) {
                     showAlert('Bạn đã điểm danh rồi. Bạn điểm danh dùm có thể bạn sẽ bị xóa', 'error');
                     
@@ -373,7 +382,6 @@
                     return;
                 }
 
-                // NẾU LÀ LẦN 1 -> LƯU HỢP LỆ VÀ ĐÁNH DẤU LẦN 1 LUÔN
                 const firstText = `[Thiết bị #${shortId} - Lần 1]`;
                 note = note ? `${note} | ${firstText}` : firstText;
 
@@ -462,9 +470,15 @@
             } catch (error) { alert('Lỗi: ' + error.message); }
         }
 
-        function exportToExcel(data, username) {
-            if (!data.length) { alert("Không có dữ liệu để xuất file!"); return; }
-            const exportData = data.map(item => ({
+        function exportToExcel(data, username, isDuplicateOnly = false) {
+            if (!data.length) { alert("Không có dữ liệu thỏa mãn để xuất file!"); return; }
+            
+            // Nếu chọn xuất danh sách trùng lặp, lọc riêng các bản ghi có flag isDuplicate
+            const finalData = isDuplicateOnly ? data.filter(item => item.isDuplicate === true) : data;
+            
+            if (!finalData.length) { alert("Không có dữ liệu trùng lặp nào trong danh sách đang chọn!"); return; }
+
+            const exportData = finalData.map(item => ({
                 "Ngày": item.date, "Họ tên": item.fullName, "Năm sinh": item.birthYear,
                 "Lớp": item.class, "Chi đoàn": item.union, "Nội dung sự kiện": item.qrContent, "Ghi chú": item.note, "Thời gian quét": item.time, 
                 "Trạng thái thiết bị": item.isDuplicate ? `Trùng lặp (Mã máy #${item.deviceId ? item.deviceId.slice(-4) : '????'} - Lần ${item.duplicateCount || 2})` : `Hợp lệ (Mã máy #${item.deviceId ? item.deviceId.slice(-4) : '????'} - Lần 1)`
@@ -472,7 +486,9 @@
             const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Danh Sách");
-            XLSX.writeFile(wb, `DiemDanh_${username}_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
+            
+            const filePrefix = isDuplicateOnly ? "DS_TrungLap" : "DiemDanh";
+            XLSX.writeFile(wb, `${filePrefix}_${username}_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
         }
 
         async function downloadQRCode() {
@@ -495,12 +511,13 @@
             } catch (error) { alert('Lỗi: ' + error.message); }
         }
 
-        // Hàm xử lý tải lại dữ liệu ngầm mượt mà
+        // Hàm xử lý tải lại dữ liệu ngầm (không reload trang gây gián đoạn)
         async function refreshDataSmooth() {
             const refreshBtn = document.getElementById('refreshBtn');
             if (refreshBtn) refreshBtn.classList.add('spinning');
 
             try {
+                // Tải trạng thái QR Content hiện hành
                 let savedQrContent = "";
                 const qrSnap = await database.ref('qrContents/' + currentUser.username).once('value');
                 savedQrContent = qrSnap.val() || "";
@@ -510,6 +527,7 @@
                     statusAlertArea.innerHTML = savedQrContent ? `<div class="alert alert-success" style="margin-top:10px; padding:6px 12px; font-size:0.8rem;">📍 Nội dung hiện tại: ${escapeHtml(savedQrContent)}</div>` : '';
                 }
 
+                // Tải dữ liệu điểm danh
                 const snapshot = await database.ref('checkins/' + currentUser.username).once('value');
                 const data = snapshot.val() || {};
                 let checkins = Object.values(data).map(item => {
@@ -523,16 +541,34 @@
                 const today = new Date().toLocaleDateString('vi-VN');
                 const todayCount = checkins.filter(c => c.date === today).length;
 
+                // Đồng bộ chỉ số thống kê dạng text nhanh
                 const totalNum = document.getElementById('totalNum');
                 const todayNum = document.getElementById('todayNum');
                 if (totalNum) totalNum.innerText = checkins.length;
                 if (todayNum) todayNum.innerText = todayCount;
 
+                // Đồng bộ khối thống kê theo danh mục QR và thu thập danh sách sự kiện duy nhất cho combobox
                 const qrStats = new Map();
                 checkins.forEach(item => {
                     const content = item.qrContent || "(Không có nội dung)";
                     qrStats.set(content, (qrStats.get(content) || 0) + 1);
                 });
+
+                // Cập nhật Combobox sự kiện (giữ lại lựa chọn hiện tại nếu có)
+                const eventFilter = document.getElementById('eventFilter');
+                const currentSelectedEvent = eventFilter ? eventFilter.value : 'all';
+                
+                if (eventFilter) {
+                    let selectHtml = '<option value="all">-- Tất cả sự kiện --</option>';
+                    for (let content of qrStats.keys()) {
+                        selectHtml += `<option value="${escapeHtml(content)}">${escapeHtml(content)}</option>`;
+                    }
+                    eventFilter.innerHTML = selectHtml;
+                    // Thiết lập lại cấu hình lựa chọn cũ nếu nó vẫn tồn tại
+                    if([...eventFilter.options].some(o => o.value === currentSelectedEvent)) {
+                        eventFilter.value = currentSelectedEvent;
+                    }
+                }
 
                 const qrStatsArea = document.getElementById('qrStatsArea');
                 if (qrStatsArea) {
@@ -553,8 +589,10 @@
                     qrStatsArea.innerHTML = qrStatsHtml;
                 }
 
+                // Đồng bộ cấu trúc bảng và bộ lọc tìm kiếm + bộ lọc sự kiện
                 const searchInput = document.getElementById('searchInput');
                 const currentSearchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+                const selectedEventValue = eventFilter ? eventFilter.value : 'all';
 
                 const renderTable = (list) => {
                     const tbody = document.getElementById('tableBody');
@@ -581,26 +619,46 @@
                     }).join('');
                 };
 
-                const filtered = checkins.filter(c => 
-                    currentSearchTerm === '' || (c.fullName && c.fullName.toLowerCase().includes(currentSearchTerm)) ||
-                    (c.class && c.class.toLowerCase().includes(currentSearchTerm)) || (c.union && c.union.toLowerCase().includes(currentSearchTerm)) ||
-                    (c.qrContent && c.qrContent.toLowerCase().includes(currentSearchTerm)) || (c.date && c.date.includes(currentSearchTerm))
-                );
+                // Hàm thực hiện lọc tổng hợp (Cả từ khóa và Sự kiện)
+                const getFilteredList = (term, eventVal) => {
+                    return checkins.filter(c => {
+                        // 1. Lọc theo Sự kiện
+                        if (eventVal !== 'all') {
+                            const currentContent = c.qrContent || "(Không có nội dung)";
+                            if (currentContent !== eventVal) return false;
+                        }
+                        // 2. Lọc theo Từ khóa tìm kiếm
+                        return term === '' || 
+                            (c.fullName && c.fullName.toLowerCase().includes(term)) ||
+                            (c.class && c.class.toLowerCase().includes(term)) || 
+                            (c.union && c.union.toLowerCase().includes(term)) ||
+                            (c.qrContent && c.qrContent.toLowerCase().includes(term)) || 
+                            (c.date && c.date.includes(term));
+                    });
+                };
+
+                const filtered = getFilteredList(currentSearchTerm, selectedEventValue);
                 renderTable(filtered);
 
+                // Liên kết sự kiện click cho các nút xuất bài
                 const exportBtn = document.getElementById('exportBtn');
-                if (exportBtn) exportBtn.onclick = () => exportToExcel(filtered, currentUser.username);
+                if (exportBtn) exportBtn.onclick = () => exportToExcel(getFilteredList(document.getElementById('searchInput').value.toLowerCase(), document.getElementById('eventFilter').value), currentUser.username, false);
 
+                const exportDuplicateBtn = document.getElementById('exportDuplicateBtn');
+                if (exportDuplicateBtn) exportDuplicateBtn.onclick = () => exportToExcel(getFilteredList(document.getElementById('searchInput').value.toLowerCase(), document.getElementById('eventFilter').value), currentUser.username, true);
+
+                // Thiết lập hành vi thời gian thực khi tương tác cấu trúc lọc
                 if (searchInput) {
-                    searchInput.oninput = (e) => {
-                        const term = e.target.value.toLowerCase();
-                        const realtimeFiltered = checkins.filter(c => 
-                            term === '' || (c.fullName && c.fullName.toLowerCase().includes(term)) ||
-                            (c.class && c.class.toLowerCase().includes(term)) || (c.union && c.union.toLowerCase().includes(term)) ||
-                            (c.qrContent && c.qrContent.toLowerCase().includes(term)) || (c.date && c.date.includes(term))
-                        );
-                        renderTable(realtimeFiltered);
-                        if (exportBtn) exportBtn.onclick = () => exportToExcel(realtimeFiltered, currentUser.username);
+                    searchInput.oninput = () => {
+                        const currentList = getFilteredList(searchInput.value.toLowerCase(), document.getElementById('eventFilter').value);
+                        renderTable(currentList);
+                    };
+                }
+
+                if (eventFilter) {
+                    eventFilter.onchange = () => {
+                        const currentList = getFilteredList(document.getElementById('searchInput').value.toLowerCase(), eventFilter.value);
+                        renderTable(currentList);
                     };
                 }
 
@@ -609,7 +667,7 @@
                 alert('Có lỗi xảy ra khi đồng bộ dữ liệu: ' + error.message);
             } finally {
                 if (refreshBtn) {
-                    setTimeout(() => refreshBtn.remove('spinning'), 500);
+                    setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
                 }
             }
         }
@@ -682,8 +740,12 @@
                                         </button>
                                     </h3>
                                     <div class="flex-row">
+                                        <select id="eventFilter" class="filter-select">
+                                            <option value="all">-- Tất cả sự kiện --</option>
+                                        </select>
                                         <input type="text" id="searchInput" class="search-box" placeholder="Tìm nhanh tên, lớp...">
                                         <button class="btn-primary" id="exportBtn" style="background:#16a34a;">Xuất Excel</button>
+                                        <button class="btn-warning" id="exportDuplicateBtn">Xuất DS Trùng</button>
                                     </div>
                                 </div>
                                 <div class="table-wrapper">
@@ -715,6 +777,7 @@
                 document.getElementById('copyBtn').onclick = () => { navigator.clipboard.writeText(checkinUrl); alert('Đã sao chép liên kết điểm danh thành công!'); };
                 document.getElementById('downloadBtn').onclick = downloadQRCode;
                 
+                // Kích hoạt đồng bộ hóa dữ liệu ngầm mượt mà lần đầu tiên
                 await refreshDataSmooth();
                 
             } catch (error) {
