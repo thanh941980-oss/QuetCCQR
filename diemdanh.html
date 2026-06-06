@@ -268,21 +268,20 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyCjqPUYSLtlrjPx_6kNNj8qcXZRGdW7e4A",
-  authDomain: "quan-ly-ca-phe.firebaseapp.com",
-  databaseURL: "https://quan-ly-ca-phe-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "quan-ly-ca-phe",
-  storageBucket: "quan-ly-ca-phe.firebasestorage.app",
-  messagingSenderId: "782863798527",
-  appId: "1:782863798527:web:13b064057494382377fcca",
-  measurementId: "G-CZNY2N56R4"
-};
+            apiKey: "AIzaSyCjqPUYSLtlrjPx_6kNNj8qcXZRGdW7e4A",
+            authDomain: "quan-ly-ca-phe.firebaseapp.com",
+            databaseURL: "https://quan-ly-ca-phe-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "quan-ly-ca-phe",
+            storageBucket: "quan-ly-ca-phe.firebasestorage.app",
+            messagingSenderId: "782863798527",
+            appId: "1:782863798527:web:13b064057494382377fcca",
+            measurementId: "G-CZNY2N56R4"
+        };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
         let currentUser = null;
 
-        // Hàm tạo mã định danh thiết bị ẩn (Device Fingerprint) đơn giản tránh trùng lặp máy quét
         function getDeviceFingerprint() {
             const navigatorInfo = window.navigator.userAgent + window.navigator.language + window.screen.colorDepth + window.screen.width + window.screen.height;
             let hash = 0;
@@ -318,27 +317,83 @@
         // ========== FORM ĐIỂM DANH CLIENT ==========
         async function renderCheckinForm(container) {
             const ownerUser = new URLSearchParams(window.location.search).get('user') || 'public';
-            let qrContent = "";
-            try { const snap = await database.ref('qrContents/' + ownerUser).once('value'); qrContent = snap.val() || ""; } catch(e) {}
+            let qrData = { content: "", startTime: "", endTime: "" };
+            try { 
+                const snap = await database.ref('qrContents/' + ownerUser).once('value'); 
+                const val = snap.val();
+                if (val) {
+                    if (typeof val === 'object') {
+                        qrData = { content: val.content || "", startTime: val.startTime || "", endTime: val.endTime || "" };
+                    } else {
+                        qrData.content = val;
+                    }
+                }
+            } catch(e) {}
+            
             const todayDate = new Date().toLocaleDateString('vi-VN');
+            
+            // Kiểm tra thời gian điểm danh ngay khi load form client
+            let isTimeValid = true;
+            let timeErrorMsg = "";
+            const now = new Date();
+            const currentHourMin = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            
+            if (qrData.startTime && currentHourMin < qrData.startTime) {
+                isTimeValid = false;
+                timeErrorMsg = `⏳ Chưa đến thời gian điểm danh. Vui lòng quay lại lúc: <b>${qrData.startTime}</b>`;
+            } else if (qrData.endTime && currentHourMin > qrData.endTime) {
+                isTimeValid = false;
+                timeErrorMsg = `🛑 Đã hết thời gian cho phép điểm danh (Hạn chót: <b>${qrData.endTime}</b>)`;
+            }
+
             container.innerHTML = `
                 <div class="card" style="max-width:460px; margin:30px auto; border-top: 4px solid #2563eb;">
                     <h3 style="text-align:center; display:block; margin-bottom:6px;">📋 XÁC NHẬN ĐIỂM DANH</h3>
                     <p style="text-align:center; color:#64748b; font-size:0.85rem; margin-bottom:18px;">Ngày: ${todayDate}</p>
-                    ${qrContent ? `<div class="alert alert-success" style="text-align:center;">📌 ${escapeHtml(qrContent)}</div>` : ''}
-                    <div id="alertMessage"></div>
-                    <div class="form-group"><label>Họ và tên *</label><input type="text" id="fullName" placeholder="Ví dụ: Nguyễn Văn A"></div>
-                    <div class="form-group"><label>Năm sinh *</label><input type="number" id="birthYear" placeholder="Ví dụ: 2005"></div>
-                    <div class="form-group"><label>Lớp *</label><input type="text" id="class" placeholder="Ví dụ: 12A1"></div>
-                    <div class="form-group"><label>Chi đoàn *</label><input type="text" id="union" placeholder="Ví dụ: Đoàn trường"></div>
-                    <div class="form-group"><label>Ghi chú (nếu có)</label><textarea id="note" rows="2" placeholder="Nhập ghi chú..."></textarea></div>
-                    <button class="btn-primary" id="submitBtn" style="width:100%; padding:10px; font-size:0.95rem; font-weight:600; margin-top:6px;">Xác nhận hoàn tất</button>
+                    ${qrData.content ? `<div class="alert alert-success" style="text-align:center;">📌 SỰ KIỆN: ${escapeHtml(qrData.content)}</div>` : ''}
+                    
+                    ${(qrData.startTime || qrData.endTime) ? `
+                        <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; margin-bottom: 12px; text-align: center; border: 1px solid #cbd5e1;">
+                            🕒 Khung giờ ấn định: <b>${qrData.startTime || '00:00'}</b> đến <b>${qrData.endTime || '23:59'}</b>
+                        </div>
+                    ` : ''}
+
+                    <div id="alertMessage">
+                        ${!isTimeValid ? `<div class="alert alert-error" style="text-align:center;">${timeErrorMsg}</div>` : ''}
+                    </div>
+
+                    <div id="formFields" style="${!isTimeValid ? 'display:none;' : ''}">
+                        <div class="form-group"><label>Họ và tên *</label><input type="text" id="fullName" placeholder="Ví dụ: Nguyễn Văn A"></div>
+                        <div class="form-group"><label>Năm sinh *</label><input type="number" id="birthYear" placeholder="Ví dụ: 2005"></div>
+                        <div class="form-group"><label>Lớp *</label><input type="text" id="class" placeholder="Ví dụ: 12A1"></div>
+                        <div class="form-group"><label>Chi đoàn *</label><input type="text" id="union" placeholder="Ví dụ: Đoàn trường"></div>
+                        <div class="form-group"><label>Ghi chú (nếu có)</label><textarea id="note" rows="2" placeholder="Nhập ghi chú..."></textarea></div>
+                        <button class="btn-primary" id="submitBtn" style="width:100%; padding:10px; font-size:0.95rem; font-weight:600; margin-top:6px;">Xác nhận hoàn tất</button>
+                    </div>
                 </div>
             `;
-            document.getElementById('submitBtn').onclick = () => submitCheckin(todayDate, qrContent, ownerUser);
+            
+            if(isTimeValid) {
+                document.getElementById('submitBtn').onclick = () => submitCheckin(todayDate, qrData.content, ownerUser, qrData.startTime, qrData.endTime);
+            }
         }
 
-        async function submitCheckin(date, qrContent, ownerUser) {
+        async function submitCheckin(date, qrContent, ownerUser, startTime, endTime) {
+            // Kiểm tra lại thời gian một lần nữa lúc nhấn nút gửi đề phòng Client mở ngâm form quá hạn
+            const nowTime = new Date();
+            const currentHourMin = `${nowTime.getHours().toString().padStart(2, '0')}:${nowTime.getMinutes().toString().padStart(2, '0')}`;
+            
+            if (startTime && currentHourMin < startTime) {
+                showAlert(`⏳ Lỗi: Chưa đến giờ điểm danh (Bắt đầu từ: ${startTime})`, 'error');
+                return;
+            }
+            if (endTime && currentHourMin > endTime) {
+                showAlert(`🛑 Thất bại: Đã quá thời gian điểm danh ấn định! (Hạn cuối: ${endTime})`, 'error');
+                // Ẩn form đi để không bấm lại được nữa
+                if(document.getElementById('formFields')) document.getElementById('formFields').style.display = 'none';
+                return;
+            }
+
             const fullName = document.getElementById('fullName').value.trim();
             const birthYear = document.getElementById('birthYear').value;
             const className = document.getElementById('class').value.trim();
@@ -354,7 +409,6 @@
             const shortId = deviceId.slice(-4);
 
             try {
-                // Kiểm tra xem thiết bị này đã từng quét điểm danh trong sự kiện này chưa
                 const snapshot = await database.ref('checkins/' + ownerUser).once('value');
                 const data = snapshot.val() || {};
                 
@@ -365,18 +419,13 @@
                     }
                 }
 
-                // NẾU PHÁT HIỆN TRÙNG THIẾT BỊ
                 if (scanCount >= 1) {
-                    // Hiển thị hộp thoại Xác nhận hoặc Không
                     const confirmCheckin = confirm('Bạn đã điểm danh rồi. Bạn điểm danh dùm có thể bạn sẽ bị xóa\n\nBạn nên liên hệ với Ban tổ chức để được điểm danh.\n\nBạn có muốn tiếp tục điểm danh hộ không?');
-                    
-                    // Nếu chọn "Hủy" (Không) -> Dừng tiến trình và không lưu dữ liệu
                     if (!confirmCheckin) {
                         showAlert('Đã hủy lượt điểm danh trùng lặp.', 'error');
                         return;
                     }
                     
-                    // Nếu chọn "OK" (Xác nhận) -> Tiến hành ghi nhận vào hệ thống
                     const nextCount = scanCount + 1;
                     const duplicateText = `[Trùng thiết bị #${shortId} - Lần ${nextCount}]`;
                     note = note ? `${note} | ${duplicateText}` : duplicateText;
@@ -393,7 +442,6 @@
                     return;
                 }
 
-                // LƯỢT QUÉT HỢP LỆ (LẦN ĐẦU)
                 const firstText = `[Thiết bị #${shortId} - Lần 1]`;
                 note = note ? `${note} | ${firstText}` : firstText;
 
@@ -410,7 +458,6 @@
             } catch (error) { showAlert('❌ Lỗi hệ thống: ' + error.message, 'error'); }
         }
 
-        // Hàm hỗ trợ tự động làm sạch form sau khi gửi thông tin thành công
         function clearCheckinForm() {
             if(document.getElementById('fullName')) document.getElementById('fullName').value = '';
             if(document.getElementById('birthYear')) document.getElementById('birthYear').value = '';
@@ -438,7 +485,12 @@
             }
 
             let savedQrContent = "";
-            try { const qrSnap = await database.ref('qrContents/' + currentUser.username).once('value'); savedQrContent = qrSnap.val() || ""; } catch(e) {}
+            try { 
+                const qrSnap = await database.ref('qrContents/' + currentUser.username).once('value'); 
+                const val = qrSnap.val();
+                savedQrContent = val ? (typeof val === 'object' ? val.content : val) : "";
+            } catch(e) {}
+            
             const todayDate = new Date().toLocaleDateString('vi-VN');
             const now = new Date();
             
@@ -489,26 +541,20 @@
 
         function exportToExcel(data, username, isDuplicateFilter = false) {
             if (!data.length) { alert("Không có dữ liệu thỏa mãn để xuất file!"); return; }
-            
             let finalData = data;
             
             if (isDuplicateFilter) {
-                // Tìm ra danh sách các deviceId có xuất hiện bản ghi trùng lặp (duplicateCount > 1 hoặc isDuplicate === true)
-                // loại trừ máy ADMIN-MANUAL
                 const duplicateDevices = new Set();
                 data.forEach(item => {
                     if (item.deviceId && item.deviceId !== 'ADMIN-MANUAL' && (item.isDuplicate || item.duplicateCount > 1)) {
                         duplicateDevices.add(item.deviceId);
                     }
                 });
-                
-                // Lọc lấy TOÀN BỘ lịch sử quét (Bao gồm cả Lần 1 và Lần 2, 3...) của thiết bị bị trùng đó
                 finalData = data.filter(item => item.deviceId && duplicateDevices.has(item.deviceId));
             }
             
             if (!finalData.length) { alert("Không có dữ liệu thiết bị trùng lặp nào trong danh sách đang chọn!"); return; }
 
-            // Sắp xếp lại theo ID thiết bị và thứ tự thời gian quét để admin dễ nhìn chuỗi quét trùng
             if (isDuplicateFilter) {
                 finalData.sort((a, b) => {
                     if (a.deviceId !== b.deviceId) return a.deviceId.localeCompare(b.deviceId);
@@ -517,7 +563,6 @@
             }
 
             const exportData = finalData.map(item => {
-                // Tách giờ từ chuỗi time (ví dụ "06/06/2026 11:28:00" -> "11:28:00")
                 let scanHour = "—";
                 if (item.time && item.time.includes(' ')) {
                     scanHour = item.time.split(' ')[1];
@@ -562,29 +607,58 @@
 
         async function saveQrContent() {
             const newContent = document.getElementById('qrContentInput').value.trim();
+            const startTime = document.getElementById('startTimeInput').value;
+            const endTime = document.getElementById('endTimeInput').value;
+            
+            const qrObject = {
+                content: newContent,
+                startTime: startTime,
+                endTime: endTime
+            };
+
             try {
-                await database.ref('qrContents/' + currentUser.username).set(newContent);
+                await database.ref('qrContents/' + currentUser.username).set(qrObject);
+                alert('🎉 Cập nhật cấu hình sự kiện và thời gian thành công!');
                 await refreshDataSmooth();
             } catch (error) { alert('Lỗi: ' + error.message); }
         }
 
-        // Hàm xử lý tải lại dữ liệu ngầm (không reload trang gây gián đoạn)
+        // Hàm xử lý tải lại dữ liệu ngầm mượt mà
         async function refreshDataSmooth() {
             const refreshBtn = document.getElementById('refreshBtn');
             if (refreshBtn) refreshBtn.classList.add('spinning');
 
             try {
-                // Tải trạng thái QR Content hiện hành
                 let savedQrContent = "";
+                let startTime = "";
+                let endTime = "";
+                
                 const qrSnap = await database.ref('qrContents/' + currentUser.username).once('value');
-                savedQrContent = qrSnap.val() || "";
+                const qrVal = qrSnap.val();
+                if (qrVal) {
+                    if (typeof qrVal === 'object') {
+                        savedQrContent = qrVal.content || "";
+                        startTime = qrVal.startTime || "";
+                        endTime = qrVal.endTime || "";
+                    } else {
+                        savedQrContent = qrVal;
+                    }
+                }
                 
                 const statusAlertArea = document.getElementById('statusAlertArea');
                 if (statusAlertArea) {
-                    statusAlertArea.innerHTML = savedQrContent ? `<div class="alert alert-success" style="margin-top:10px; padding:6px 12px; font-size:0.8rem;">📍 Nội dung hiện tại: ${escapeHtml(savedQrContent)}</div>` : '';
+                    let timeText = (startTime || endTime) ? `<br>🕒 Thời gian: <b>${startTime || '00:00'}</b> - <b>${endTime || '23:59'}</b>` : '';
+                    statusAlertArea.innerHTML = savedQrContent ? `<div class="alert alert-success" style="margin-top:10px; padding:6px 12px; font-size:0.8rem; text-align:left;">📍 Nội dung hiện tại: ${escapeHtml(savedQrContent)}${timeText}</div>` : '';
                 }
 
-                // Tải dữ liệu điểm danh
+                // Cập nhật giá trị vào input Admin nếu có
+                if(document.getElementById('startTimeInput') && !document.getElementById('startTimeInput').value) {
+                    document.getElementById('startTimeInput').value = startTime;
+                }
+                if(document.getElementById('endTimeInput') && !document.getElementById('endTimeInput').value) {
+                    document.getElementById('endTimeInput').value = endTime;
+                }
+
                 const snapshot = await database.ref('checkins/' + currentUser.username).once('value');
                 const data = snapshot.val() || {};
                 let checkins = Object.values(data).map(item => {
@@ -598,20 +672,17 @@
                 const today = new Date().toLocaleDateString('vi-VN');
                 const todayCount = checkins.filter(c => c.date === today).length;
 
-                // Đồng bộ chỉ số thống kê dạng text nhanh
                 const totalNum = document.getElementById('totalNum');
                 const todayNum = document.getElementById('todayNum');
                 if (totalNum) totalNum.innerText = checkins.length;
                 if (todayNum) todayNum.innerText = todayCount;
 
-                // Đồng bộ khối thống kê theo danh mục QR và thu thập danh sách sự kiện duy nhất cho combobox
                 const qrStats = new Map();
                 checkins.forEach(item => {
                     const content = item.qrContent || "(Không có nội dung)";
                     qrStats.set(content, (qrStats.get(content) || 0) + 1);
                 });
 
-                // Cập nhật Combobox sự kiện (giữ lại lựa chọn hiện tại nếu có)
                 const eventFilter = document.getElementById('eventFilter');
                 const currentSelectedEvent = eventFilter ? eventFilter.value : 'all';
                 
@@ -621,7 +692,6 @@
                         selectHtml += `<option value="${escapeHtml(content)}">${escapeHtml(content)}</option>`;
                     }
                     eventFilter.innerHTML = selectHtml;
-                    // Thiết lập lại cấu hình lựa chọn cũ nếu nó vẫn tồn tại
                     if([...eventFilter.options].some(o => o.value === currentSelectedEvent)) {
                         eventFilter.value = currentSelectedEvent;
                     }
@@ -646,7 +716,6 @@
                     qrStatsArea.innerHTML = qrStatsHtml;
                 }
 
-                // Đồng bộ cấu trúc bảng và bộ lọc tìm kiếm + bộ lọc sự kiện
                 const searchInput = document.getElementById('searchInput');
                 const currentSearchTerm = searchInput ? searchInput.value.toLowerCase() : '';
                 const selectedEventValue = eventFilter ? eventFilter.value : 'all';
@@ -676,15 +745,12 @@
                     }).join('');
                 };
 
-                // Hàm thực hiện lọc tổng hợp (Cả từ khóa và Sự kiện)
                 const getFilteredList = (term, eventVal) => {
                     return checkins.filter(c => {
-                        // 1. Lọc theo Sự kiện
                         if (eventVal !== 'all') {
                             const currentContent = c.qrContent || "(Không có nội dung)";
                             if (currentContent !== eventVal) return false;
                         }
-                        // 2. Lọc theo Từ khóa tìm kiếm
                         return term === '' || 
                             (c.fullName && c.fullName.toLowerCase().includes(term)) ||
                             (c.class && c.class.toLowerCase().includes(term)) || 
@@ -697,14 +763,12 @@
                 const filtered = getFilteredList(currentSearchTerm, selectedEventValue);
                 renderTable(filtered);
 
-                // Liên kết sự kiện click cho các nút xuất Excel
                 const exportBtn = document.getElementById('exportBtn');
                 if (exportBtn) exportBtn.onclick = () => exportToExcel(getFilteredList(document.getElementById('searchInput').value.toLowerCase(), document.getElementById('eventFilter').value), currentUser.username, false);
 
                 const exportDuplicateBtn = document.getElementById('exportDuplicateBtn');
                 if (exportDuplicateBtn) exportDuplicateBtn.onclick = () => exportToExcel(getFilteredList(document.getElementById('searchInput').value.toLowerCase(), document.getElementById('eventFilter').value), currentUser.username, true);
 
-                // Thiết lập hành vi thời gian thực khi tương tác cấu trúc lọc
                 if (searchInput) {
                     searchInput.oninput = () => {
                         const currentList = getFilteredList(searchInput.value.toLowerCase(), document.getElementById('eventFilter').value);
@@ -733,7 +797,21 @@
         async function renderAdminView(container) {
             try {
                 let savedQrContent = "";
-                try { const snap = await database.ref('qrContents/' + currentUser.username).once('value'); savedQrContent = snap.val() || ""; } catch(e) {}
+                let startTime = "";
+                let endTime = "";
+                
+                const snap = await database.ref('qrContents/' + currentUser.username).once('value');
+                const qrVal = snap.val();
+                if (qrVal) {
+                    if (typeof qrVal === 'object') {
+                        savedQrContent = qrVal.content || "";
+                        startTime = qrVal.startTime || "";
+                        endTime = qrVal.endTime || "";
+                    } else {
+                        savedQrContent = qrVal;
+                    }
+                }
+                
                 const checkinUrl = window.location.origin + window.location.pathname + '?mode=checkin&user=' + encodeURIComponent(currentUser.username);
                 
                 container.innerHTML = `
@@ -750,17 +828,28 @@
                                     <div class="form-group" style="border-top: 1px solid #e2e8f0; padding-top:12px; margin-bottom: 0;">
                                         <label>Nội dung đính kèm lượt quét</label>
                                         <input type="text" id="qrContentInput" placeholder="Ví dụ: Đại hội chi đoàn..." value="${escapeHtml(savedQrContent)}">
-                                        <button class="btn-secondary" onclick="saveQrContent()" style="width:100%; margin-top:6px; padding:6px; background:#1e293b; color:#fff;">Cập nhật nội dung</button>
+                                        
+                                        <!-- Thêm cấu hình thời gian điểm danh -->
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+                                            <div>
+                                                <label style="font-size: 0.75rem;">Giờ bắt đầu</label>
+                                                <input type="time" id="startTimeInput" value="${startTime}">
+                                            </div>
+                                            <div>
+                                                <label style="font-size: 0.75rem;">Giờ kết thúc</label>
+                                                <input type="time" id="endTimeInput" value="${endTime}">
+                                            </div>
+                                        </div>
+                                        
+                                        <button class="btn-secondary" onclick="saveQrContent()" style="width:100%; margin-top:10px; padding:6px; background:#1e293b; color:#fff;">Cập nhật cấu hình</button>
                                     </div>
-                                    <div id="statusAlertArea">
-                                        ${savedQrContent ? `<div class="alert alert-success" style="margin-top:10px; padding:6px 12px; font-size:0.8rem;">📍 Nội dung hiện tại: ${escapeHtml(savedQrContent)}</div>` : ''}
-                                    </div>
+                                    <div id="statusAlertArea"></div>
                                 </div>
                             </div>
 
                             <div class="card" style="border-top: 3px solid #16a34a;">
                                 <h3>✍️ Admin Điểm Danh Hộ</h3>
-                                <p style="font-size: 0.75rem; color: #64748b; margin-bottom: 10px;">Dành cho người không có điện thoại để quét mã QR (Gắn vào nội dung hiện hành).</p>
+                                <p style="font-size: 0.75rem; color: #64748b; margin-bottom: 10px;">Dành cho người không có điện thoại (Bỏ qua cấu hình hạn giờ quét).</p>
                                 <div class="form-group"><label>Họ và tên *</label><input type="text" id="adminFullName" placeholder="Nguyễn Văn A"></div>
                                 <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                                     <div><label>Năm sinh *</label><input type="number" id="adminBirthYear" placeholder="2005"></div>
@@ -834,7 +923,6 @@
                 document.getElementById('copyBtn').onclick = () => { navigator.clipboard.writeText(checkinUrl); alert('Đã sao chép liên kết điểm danh thành công!'); };
                 document.getElementById('downloadBtn').onclick = downloadQRCode;
                 
-                // Kích hoạt đồng bộ hóa dữ liệu ngầm mượt mà lần đầu tiên
                 await refreshDataSmooth();
                 
             } catch (error) {
