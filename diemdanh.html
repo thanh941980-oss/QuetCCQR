@@ -227,7 +227,7 @@
         .delete-icon:hover { color: #ef4444; }
 
         /* Nhãn Trạng Thái Trực Quan */
-        .badge { background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 0.7 rrem; font-weight: 600; display: inline-block; }
+        .badge { background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; display: inline-block; }
         .badge-danger { background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; display: inline-block; }
         .alert { padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 0.8rem; font-weight: 500; }
         .alert-success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
@@ -470,24 +470,64 @@
             } catch (error) { alert('Lỗi: ' + error.message); }
         }
 
-        function exportToExcel(data, username, isDuplicateOnly = false) {
+        function exportToExcel(data, username, isDuplicateFilter = false) {
             if (!data.length) { alert("Không có dữ liệu thỏa mãn để xuất file!"); return; }
             
-            // Nếu chọn xuất danh sách trùng lặp, lọc riêng các bản ghi có flag isDuplicate
-            const finalData = isDuplicateOnly ? data.filter(item => item.isDuplicate === true) : data;
+            let finalData = data;
             
-            if (!finalData.length) { alert("Không có dữ liệu trùng lặp nào trong danh sách đang chọn!"); return; }
+            if (isDuplicateFilter) {
+                // Tìm ra danh sách các deviceId có xuất hiện bản ghi trùng lặp (duplicateCount > 1 hoặc isDuplicate === true)
+                // loại trừ máy ADMIN-MANUAL
+                const duplicateDevices = new Set();
+                data.forEach(item => {
+                    if (item.deviceId && item.deviceId !== 'ADMIN-MANUAL' && (item.isDuplicate || item.duplicateCount > 1)) {
+                        duplicateDevices.add(item.deviceId);
+                    }
+                });
+                
+                // Lọc lấy TOÀN BỘ lịch sử quét (Bao gồm cả Lần 1 và Lần 2, 3...) của thiết bị bị trùng đó
+                finalData = data.filter(item => item.deviceId && duplicateDevices.has(item.deviceId));
+            }
+            
+            if (!finalData.length) { alert("Không có dữ liệu thiết bị trùng lặp nào trong danh sách đang chọn!"); return; }
 
-            const exportData = finalData.map(item => ({
-                "Ngày": item.date, "Họ tên": item.fullName, "Năm sinh": item.birthYear,
-                "Lớp": item.class, "Chi đoàn": item.union, "Nội dung sự kiện": item.qrContent, "Ghi chú": item.note, "Thời gian quét": item.time, 
-                "Trạng thái thiết bị": item.isDuplicate ? `Trùng lặp (Mã máy #${item.deviceId ? item.deviceId.slice(-4) : '????'} - Lần ${item.duplicateCount || 2})` : `Hợp lệ (Mã máy #${item.deviceId ? item.deviceId.slice(-4) : '????'} - Lần 1)`
-            }));
+            // Sắp xếp lại theo ID thiết bị và thứ tự thời gian quét để admin dễ nhìn chuỗi quét trùng
+            if (isDuplicateFilter) {
+                finalData.sort((a, b) => {
+                    if (a.deviceId !== b.deviceId) return a.deviceId.localeCompare(b.deviceId);
+                    return (a.timestamp || 0) - (b.timestamp || 0);
+                });
+            }
+
+            const exportData = finalData.map(item => {
+                // Tách giờ từ chuỗi time (ví dụ "06/06/2026 11:28:00" -> "11:28:00")
+                let scanHour = "—";
+                if (item.time && item.time.includes(' ')) {
+                    scanHour = item.time.split(' ')[1];
+                } else if (item.time) {
+                    scanHour = item.time;
+                }
+                
+                return {
+                    "Ngày": item.date,
+                    "Giờ điểm danh": scanHour,
+                    "Họ tên": item.fullName,
+                    "Năm sinh": item.birthYear,
+                    "Lớp": item.class,
+                    "Chi đoàn": item.union,
+                    "Nội dung sự kiện": item.qrContent,
+                    "Ghi chú": item.note,
+                    "Thời gian đầy đủ": item.time, 
+                    "Thứ tự quét của thiết bị": item.deviceId === 'ADMIN-MANUAL' ? "Admin nhập hộ" : `Lần ${item.duplicateCount || 1} (Mã máy #${item.deviceId ? item.deviceId.slice(-4) : '????'})`,
+                    "Trạng thái": item.isDuplicate ? "Trùng lặp (Cảnh báo)" : "Hợp lệ"
+                };
+            });
+            
             const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Danh Sách");
             
-            const filePrefix = isDuplicateOnly ? "DS_TrungLap" : "DiemDanh";
+            const filePrefix = isDuplicateFilter ? "DS_ThietBi_QuetTrung" : "DiemDanh";
             XLSX.writeFile(wb, `${filePrefix}_${username}_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
         }
 
@@ -640,7 +680,7 @@
                 const filtered = getFilteredList(currentSearchTerm, selectedEventValue);
                 renderTable(filtered);
 
-                // Liên kết sự kiện click cho các nút xuất bài
+                // Liên kết sự kiện click cho các nút xuất Excel
                 const exportBtn = document.getElementById('exportBtn');
                 if (exportBtn) exportBtn.onclick = () => exportToExcel(getFilteredList(document.getElementById('searchInput').value.toLowerCase(), document.getElementById('eventFilter').value), currentUser.username, false);
 
