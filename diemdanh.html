@@ -347,23 +347,22 @@
                 const snapshot = await database.ref('checkins/' + ownerUser).once('value');
                 const data = snapshot.val() || {};
                 
-                let isDuplicate = false;
+                let scanCount = 0;
                 for (const item of Object.values(data)) {
                     if (item.deviceId === deviceId && item.date === date && (item.qrContent || "") === (qrContent || "")) {
-                        isDuplicate = true;
-                        break;
+                        scanCount++;
                     }
                 }
 
-                if (isDuplicate) {
+                if (scanCount >= 1) {
                     showAlert('Bạn đã điểm danh rồi. Bạn điểm danh dùm có thể bạn sẽ bị xóa', 'error');
                     
-                    // Vẫn cho phép lưu bản ghi lỗi này vào database nhưng gắn cờ cảnh báo trùng lặp để admin xử lý
+                    // Vẫn cho phép lưu bản ghi lỗi này vào database nhưng gắn cờ cảnh báo trùng lặp và lưu số lần trùng để admin xử lý
                     const now = new Date();
                     const record = {
                         id: now.getTime().toString(), fullName, birthYear, class: className, union, note,
                         time: now.toLocaleString('vi-VN'), timestamp: now.getTime(), date: date, qrContent: qrContent || "",
-                        deviceId: deviceId, isDuplicate: true
+                        deviceId: deviceId, isDuplicate: true, duplicateCount: scanCount + 1
                     };
                     await database.ref('checkins/' + ownerUser + '/' + record.id).set(record);
                     return;
@@ -373,7 +372,7 @@
                 const record = {
                     id: now.getTime().toString(), fullName, birthYear, class: className, union, note,
                     time: now.toLocaleString('vi-VN'), timestamp: now.getTime(), date: date, qrContent: qrContent || "",
-                    deviceId: deviceId, isDuplicate: false
+                    deviceId: deviceId, isDuplicate: false, duplicateCount: 1
                 };
 
                 await database.ref('checkins/' + ownerUser + '/' + record.id).set(record);
@@ -413,7 +412,7 @@
                 id: now.getTime().toString(), fullName, birthYear, class: className, union,
                 note: note ? note + " (Admin nhập hộ)" : "Admin nhập hộ",
                 time: now.toLocaleString('vi-VN'), timestamp: now.getTime(), date: todayDate, qrContent: savedQrContent,
-                deviceId: "ADMIN-MANUAL", isDuplicate: false
+                deviceId: "ADMIN-MANUAL", isDuplicate: false, duplicateCount: 1
             };
 
             try {
@@ -458,7 +457,7 @@
             if (!data.length) { alert("Không có dữ liệu để xuất file!"); return; }
             const exportData = data.map(item => ({
                 "Ngày": item.date, "Họ tên": item.fullName, "Năm sinh": item.birthYear,
-                "Lớp": item.class, "Chi đoàn": item.union, "Nội dung sự kiện": item.qrContent, "Ghi chú": item.note, "Thời gian quét": item.time, "Trạng thái thiết bị": item.isDuplicate ? "Trùng lặp thiết bị (Cảnh báo)" : "Hợp lệ"
+                "Lớp": item.class, "Chi đoàn": item.union, "Nội dung sự kiện": item.qrContent, "Ghi chú": item.note, "Thời gian quét": item.time, "Trạng thái thiết bị": item.isDuplicate ? `Trùng lặp (Lần ${item.duplicateCount || 2})` : "Hợp lệ"
             }));
             const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
@@ -561,7 +560,7 @@
                             <td><span class="badge">${escapeHtml(item.date || '--')}</span></td>
                             <td>
                                 <strong>${escapeHtml(item.fullName || '')}</strong>
-                                ${item.isDuplicate ? '<br><span class="badge-danger">⚠️ [Trùng thiết bị]</span>' : ''}
+                                ${item.isDuplicate ? `<br><span class="badge-danger" style="font-size:0.7rem; padding:1px 4px;">⚠️ [Trùng thiết bị - Lần ${item.duplicateCount || 2}]</span>` : ''}
                             </td>
                             <td>${escapeHtml(item.birthYear || '')}</td>
                             <td>${escapeHtml(item.class || '')}</td>
